@@ -3,21 +3,43 @@ import Foundation
 import CoreNFC
 
 @available(iOS 11.0, *)
-public class SwiftFlutterNfcReaderPlugin: NSObject, FlutterPlugin {
+public class SwiftFlutterNfcReaderPlugin: NSObject, FlutterPlugin, FlutterStreamHandler {
+    
+    
     
     fileprivate var nfcSession: NFCNDEFReaderSession? = nil
     fileprivate var instruction: String? = nil
     fileprivate var resulter: FlutterResult? = nil
+    private var _eventSink: FlutterEventSink?
 
     fileprivate let kId = "nfcId"
     fileprivate let kContent = "nfcContent"
     fileprivate let kStatus = "nfcStatus"
     fileprivate let kError = "nfcError"
-
+    
+    static let eventChannelName = "it.matteocrippa.flutternfcreader.flutter_nfc_reader"
+    static let methodChannelName = "flutter_nfc_reader"
+    
     public static func register(with registrar: FlutterPluginRegistrar) {
-        let channel = FlutterMethodChannel(name: "flutter_nfc_reader", binaryMessenger: registrar.messenger())
+        let channel = FlutterMethodChannel(name: methodChannelName, binaryMessenger: registrar.messenger())
+        let eventChannel = FlutterEventChannel(name: eventChannelName, binaryMessenger: registrar.messenger())
         let instance = SwiftFlutterNfcReaderPlugin()
+        
+        eventChannel.setStreamHandler(instance)
+        
+        
         registrar.addMethodCallDelegate(instance, channel: channel)
+    }
+    
+    public func onListen(withArguments arguments: Any?,
+                         eventSink: @escaping FlutterEventSink) -> FlutterError? {
+        self._eventSink = eventSink
+        return nil
+    }
+    
+    public func onCancel(withArguments arguments: Any?) -> FlutterError? {
+        _eventSink = nil
+        return nil
     }
     
     public func handle(_ call: FlutterMethodCall, result: @escaping FlutterResult) {
@@ -47,6 +69,9 @@ extension SwiftFlutterNfcReaderPlugin {
             nfcSession?.alertMessage = instruction
         }
         
+        let data = [kId: "", kContent: "", kError: "", kStatus: "ready"]
+        resulter?(data)
+        
         // start
         if let nfcSession = nfcSession {
             nfcSession.begin()
@@ -73,8 +98,9 @@ extension SwiftFlutterNfcReaderPlugin : NFCNDEFReaderSessionDelegate {
 	    guard let payloadContent = String(data: payload.payload, encoding: String.Encoding.utf8) else { return }
 
         let data = [kId: "", kContent: payloadContent, kError: "", kStatus: "read"]
-
-        resulter?(data)
+        
+        _eventSink!(data)
+        //xxresulter?(data)
         disableNFC()
     }
     

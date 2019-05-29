@@ -2,14 +2,10 @@ package it.matteocrippa.flutternfcreader
 
 import android.Manifest
 import android.content.Context
-import android.nfc.NfcAdapter
-import android.nfc.NfcManager
-import android.nfc.Tag
+import android.nfc.*
 import android.nfc.tech.Ndef
 import android.os.Build
 import io.flutter.plugin.common.EventChannel
-import io.flutter.plugin.common.EventChannel.StreamHandler
-import io.flutter.plugin.common.EventChannel.EventSink
 import io.flutter.plugin.common.MethodCall
 import io.flutter.plugin.common.MethodChannel
 import io.flutter.plugin.common.MethodChannel.MethodCallHandler
@@ -27,6 +23,7 @@ class FlutterNfcReaderPlugin(val registrar: Registrar) : MethodCallHandler, Even
     private var isReading = false
     private var nfcAdapter: NfcAdapter? = null
     private var nfcManager: NfcManager? = null
+    private var writeToChip = false
 
     private var eventSink: EventChannel.EventSink? = null
 
@@ -34,8 +31,13 @@ class FlutterNfcReaderPlugin(val registrar: Registrar) : MethodCallHandler, Even
     private var kContent = "nfcContent"
     private var kError = "nfcError"
     private var kStatus = "nfcStatus"
+    private var kDataToWrite: String? = ""
 
-    private var READER_FLAGS = NfcAdapter.FLAG_READER_NFC_A
+    private var READER_FLAGS = NfcAdapter.FLAG_READER_NFC_A or
+            NfcAdapter.FLAG_READER_NFC_B or
+            NfcAdapter.FLAG_READER_NFC_BARCODE or
+            NfcAdapter.FLAG_READER_NFC_F or
+            NfcAdapter.FLAG_READER_NFC_V
 
     companion object {
         @JvmStatic
@@ -57,8 +59,29 @@ class FlutterNfcReaderPlugin(val registrar: Registrar) : MethodCallHandler, Even
     override fun onMethodCall(call: MethodCall, result: Result): Unit {
 
         when (call.method) {
-            "NfcRead" -> {
+            "NfcWrite" -> {
+                writeToChip = true
+                kDataToWrite = call.argument("text")
 
+                if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M) {
+                    activity.requestPermissions(
+                            arrayOf(Manifest.permission.NFC),
+                            PERMISSION_NFC
+                    )
+                }
+
+                startNFC()
+
+                if (!isReading) {
+                    result.error("404", "NFC Hardware not found", null)
+                    return
+                }
+
+                result.success(null)
+            }
+            "NfcRead" -> {
+                writeToChip = false
+                kDataToWrite = ""
                 if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M) {
                     activity.requestPermissions(
                         arrayOf(Manifest.permission.NFC),
@@ -100,6 +123,7 @@ class FlutterNfcReaderPlugin(val registrar: Registrar) : MethodCallHandler, Even
         isReading = if (nfcAdapter?.isEnabled == true) {
 
             if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.KITKAT) {
+                //nfcAdapter?.disableForegroundDispatch(registrar.activity())
                 nfcAdapter?.enableReaderMode(registrar.activity(), this, READER_FLAGS, null )
             }
 
@@ -110,12 +134,26 @@ class FlutterNfcReaderPlugin(val registrar: Registrar) : MethodCallHandler, Even
         return isReading
     }
 
+
+
     private fun stopNFC() {
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.KITKAT) {
+            nfcAdapter?.disableForegroundDispatch(registrar.activity())
             nfcAdapter?.disableReaderMode(registrar.activity())
         }
         isReading = false
         eventSink = null
+    }
+
+    private fun createRecord(value: String): NdefMessage {
+        //val typeField = value.toByteArray(Charset.forName("UTF-8"))
+        //val payload = byteArrayOf(0x00.toByte())
+        //val record = NdefRecord.createTextRecord("EN", value)
+        val record = NdefRecord.createMime("text/plain", value.toByteArray(Charset.forName("UTF-8")))
+        //val record = NdefRecord(NdefRecord.TNF_WELL_KNOWN, typeField, null, payload)
+
+        return NdefMessage(arrayOf(record))
+
     }
 
     // handle discovered NDEF Tags
@@ -125,10 +163,12 @@ class FlutterNfcReaderPlugin(val registrar: Registrar) : MethodCallHandler, Even
         // ndef will be null if the discovered tag is not a NDEF tag
         // read NDEF message
         ndef?.connect()
-        val message = ndef?.ndefMessage
-                          ?.toByteArray()
-                          ?.toString(Charset.forName("UTF-8")) ?: ""
-        //val id = tag?.id?.toString(Charset.forName("ISO-8859-1")) ?: ""
+
+        if(writeToChip) {
+            ndef?.writeNdefMessage(createRecord(kDataToWrite.orEmpty()))
+        }
+
+        val message = ndef?.ndefMessage?.records?.first()?.payload?.toString(Charset.forName("UTF-8")) ?: ""
         val id = bytesToHexString(tag?.id) ?: ""
         ndef?.close()
         if (message != null) {

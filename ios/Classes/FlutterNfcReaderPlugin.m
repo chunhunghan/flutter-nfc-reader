@@ -3,6 +3,7 @@
 
 @implementation FlutterNfcReaderPlugin
 + (void)registerWithRegistrar:(NSObject<FlutterPluginRegistrar>*)registrar {
+
   [SwiftFlutterNfcReaderPlugin registerWithRegistrar:registrar];
 }
 @end

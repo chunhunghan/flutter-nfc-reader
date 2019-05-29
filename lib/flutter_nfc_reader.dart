@@ -2,13 +2,7 @@ import 'dart:async';
 
 import 'package:flutter/services.dart';
 
-enum NFCStatus {
-  none,
-  reading,
-  read,
-  stopped,
-  error,
-}
+enum NFCStatus { none, reading, read, stopped, error, writing }
 
 class NfcData {
   final String id;
@@ -33,6 +27,9 @@ class NfcData {
       statusMapper: data['nfcStatus'],
     );
     switch (result.statusMapper) {
+      case 'writing':
+        result.status = NFCStatus.writing;
+        break;
       case 'none':
         result.status = NFCStatus.none;
         break;
@@ -58,9 +55,32 @@ class FlutterNfcReader {
   static const stream =
       const EventChannel('it.matteocrippa.flutternfcreader.flutter_nfc_reader');
 
+  void _onEvent(dynamic data) {
+    print("Event");
+    print(data);
+  }
+
+  void _onError() {
+    print("Error");
+  }
+
+  FlutterNfcReader() {
+    stream.receiveBroadcastStream().listen(_onEvent, onError: _onError);
+  }
+
   static Stream<NfcData> get read {
     final resultStream = _channel
         .invokeMethod('NfcRead')
+        .asStream()
+        .asyncExpand((_) => stream
+            .receiveBroadcastStream()
+            .map((result) => NfcData.fromMap(result)));
+    return resultStream;
+  }
+
+  static Stream<NfcData> get write {
+    final resultStream = _channel
+        .invokeMethod('NfcWrite', {"text": "Write from flutter"})
         .asStream()
         .asyncExpand((_) => stream
             .receiveBroadcastStream()
