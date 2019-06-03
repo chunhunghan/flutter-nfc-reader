@@ -123,7 +123,7 @@ class FlutterNfcReaderPlugin(val registrar: Registrar) : MethodCallHandler, Even
         isReading = if (nfcAdapter?.isEnabled == true) {
 
             if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.KITKAT) {
-                //nfcAdapter?.disableForegroundDispatch(registrar.activity())
+                nfcAdapter?.disableForegroundDispatch(registrar.activity())
                 nfcAdapter?.enableReaderMode(registrar.activity(), this, READER_FLAGS, null )
             }
 
