@@ -1,4 +1,5 @@
 import 'dart:async';
+import 'dart:convert';
 import 'dart:io';
 
 import 'package:flutter/material.dart';
@@ -43,13 +44,21 @@ class _MyAppState extends State<MyApp> {
     });
 
     print('NFC: Scan started');
-
     print('NFC: Scan readed NFC tag');
-    FlutterNfcReader.write.listen((response) {
+
+    Map<String, String> jsonData = {"test": "This is json data"};
+    var jsonStr = jsonEncode(jsonData);
+
+    FlutterNfcReader.writeToCard(jsonStr).listen((response) {
       setState(() {
         _nfcData = response;
       });
     });
+    // FlutterNfcReader.write.listen((response) {
+    //   setState(() {
+    //     _nfcData = response;
+    //   });
+    // });
   }
 
   Future<void> stopNFC() async {

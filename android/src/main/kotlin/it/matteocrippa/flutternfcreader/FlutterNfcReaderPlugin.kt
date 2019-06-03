@@ -108,7 +108,7 @@ class FlutterNfcReaderPlugin(val registrar: Registrar) : MethodCallHandler, Even
             }
         }
     }
-
+    
     // EventChannel.StreamHandler methods
     override fun onListen(arguments: Any?, eventSink: EventChannel.EventSink?) {
       this.eventSink = eventSink

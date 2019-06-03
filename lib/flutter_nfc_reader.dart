@@ -78,6 +78,15 @@ class FlutterNfcReader {
     return resultStream;
   }
 
+  static Stream<NfcData> writeToCard(String stuffToWrite) {
+    return _channel
+        .invokeMethod('NfcWrite', {"text": stuffToWrite})
+        .asStream()
+        .asyncExpand((_) => stream
+            .receiveBroadcastStream()
+            .map((result) => NfcData.fromMap(result)));
+  }
+
   static Stream<NfcData> get write {
     final resultStream = _channel
         .invokeMethod('NfcWrite', {"text": "Write from flutter"})
