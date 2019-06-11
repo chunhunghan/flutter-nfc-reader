@@ -22,19 +22,28 @@ class _MyAppState extends State<MyApp> {
   }
 
   Future<void> startNFC() async {
-    setState(() {
-      _nfcData = NfcData();
-      _nfcData.status = NFCStatus.reading;
-    });
+    NfcData nfcCheck;
 
-    print('NFC: Scan started');
-
-    print('NFC: Scan readed NFC tag');
-    FlutterNfcReader.read.listen((response) {
+    nfcCheck = await FlutterNfcReader.check;
+    if (nfcCheck.status == NFCStatus.enable) {
       setState(() {
-        _nfcData = response;
+        _nfcData = NfcData();
+        _nfcData.status = NFCStatus.reading;
       });
-    });
+      print('NFC: Scan started');
+
+      print('NFC: Scan readed NFC tag');
+      FlutterNfcReader.read.listen((response) {
+        setState(() {
+          _nfcData = response;
+        });
+      });
+    }
+    else {
+      setState(() {
+        _nfcData = nfcCheck;
+      });
+    }
   }
 
   Future<void> writeNFC() async {
@@ -73,6 +82,28 @@ class _MyAppState extends State<MyApp> {
         id: '',
         content: '',
         error: 'NFC scan stop exception',
+        statusMapper: '',
+      );
+      response.status = NFCStatus.error;
+    }
+
+    setState(() {
+      _nfcData = response;
+    });
+  }
+
+  Future<void> checkNFC() async {
+    NfcData response;
+
+    try {
+      print('NFC: Check scan by user');
+      response = await FlutterNfcReader.check;
+    } on PlatformException {
+      print('NFC: Check scan exception');
+      response = NfcData(
+        id: '',
+        content: '',
+        error: 'NFC scan check exception',
         statusMapper: '',
       );
       response.status = NFCStatus.error;
@@ -136,6 +167,12 @@ class _MyAppState extends State<MyApp> {
                     child: Text('Stop NFC'),
                     onPressed: () {
                       stopNFC();
+                    },
+                  ),
+                  RaisedButton(
+                    child: Text('Check NFC'),
+                    onPressed: () {
+                      checkNFC();
                     },
                   ),
                 ],

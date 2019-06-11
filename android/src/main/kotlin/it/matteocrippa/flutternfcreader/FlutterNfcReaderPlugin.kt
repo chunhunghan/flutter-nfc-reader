@@ -21,6 +21,7 @@ class FlutterNfcReaderPlugin(val registrar: Registrar) : MethodCallHandler, Even
     private val activity = registrar.activity()
 
     private var isReading = false
+    private var nfcState = ""
     private var nfcAdapter: NfcAdapter? = null
     private var nfcManager: NfcManager? = null
     private var writeToChip = false
@@ -103,6 +104,11 @@ class FlutterNfcReaderPlugin(val registrar: Registrar) : MethodCallHandler, Even
                 val data = mapOf(kId to "", kContent to "", kError to "", kStatus to "stopped")
                 result.success(data)
             }
+            "NfcCheck" -> {
+                checkNFC()
+                val data = mapOf(kId to "", kContent to "", kError to "", kStatus to nfcState)
+                result.success(data)
+            }
             else -> {
                 result.notImplemented()
             }
@@ -143,6 +149,20 @@ class FlutterNfcReaderPlugin(val registrar: Registrar) : MethodCallHandler, Even
         }
         isReading = false
         eventSink = null
+    }
+
+    private fun checkNFC() {
+        val nfcAdapterTemp = nfcAdapter
+        if (nfcAdapterTemp == null) {
+            // NFC is not available for device
+            nfcState = "noDevice"
+        } else if (nfcAdapterTemp != null && !nfcAdapterTemp.isEnabled()) {
+            // NFC is available for device but not enabled
+            nfcState = "disable"
+        } else {
+            // NFC is enabled
+            nfcState = "enable"
+        }
     }
 
     private fun createRecord(value: String): NdefMessage {

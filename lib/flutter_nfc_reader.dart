@@ -2,7 +2,7 @@ import 'dart:async';
 
 import 'package:flutter/services.dart';
 
-enum NFCStatus { none, reading, read, stopped, error, writing }
+enum NFCStatus { none, reading, read, stopped, error, writing, noDevice, disable, enable }
 
 class NfcData {
   final String id;
@@ -41,6 +41,15 @@ class NfcData {
         break;
       case 'error':
         result.status = NFCStatus.error;
+        break;
+      case 'noDevice':
+        result.status = NFCStatus.noDevice;
+        break;
+      case 'disable':
+        result.status = NFCStatus.disable;
+        break;
+      case 'enable':
+        result.status = NFCStatus.enable;
         break;
       default:
         result.status = NFCStatus.none;
@@ -99,6 +108,14 @@ class FlutterNfcReader {
 
   static Future<NfcData> get stop async {
     final Map data = await _channel.invokeMethod('NfcStop');
+
+    final NfcData result = NfcData.fromMap(data);
+
+    return result;
+  }
+
+  static Future<NfcData> get check async {
+    final Map data = await _channel.invokeMethod('NfcCheck');
 
     final NfcData result = NfcData.fromMap(data);
 
